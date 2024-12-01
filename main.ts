@@ -1,17 +1,17 @@
 import { Plugin } from 'obsidian';
 
 
-interface MyPluginSettings {
+interface LinkOpeningRestorePluginSettings {
 	isEnabled: boolean;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
+const DEFAULT_SETTINGS: LinkOpeningRestorePluginSettings = {
 	isEnabled: true
 }
 
 
 export default class LinkOpeningRestore extends Plugin {
-	settings: MyPluginSettings;
+	settings: LinkOpeningRestorePluginSettings;
 
 
 	async onload() {
