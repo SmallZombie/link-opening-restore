@@ -4,18 +4,27 @@ import { Plugin } from 'obsidian';
 export default class LinkOpeningRestore extends Plugin {
 	static #g_SELECTOR = '.cm-content';
 
+	#registeredElements = new Set<Element>();
 
-	async onload() {
-		this.registerEvent(
-			this.app.workspace.on('active-leaf-change', () => {
-				this.#addListener();
-			})
-		);
-		this.#addListener();
+
+	override onload() {
+		// console.log('debug', this.#registeredElements);
+		this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
+			this.#addListeners();
+
+			// 释放资源
+			this.#registeredElements.forEach(v => {
+				if (!document.contains(v)) {
+					// console.log('[active-leaf-change] no longer active', v);
+					this.#registeredElements.delete(v);
+				}
+			});
+		}));
+		this.#addListeners();
 	}
 
-	onunload() {
-		this.#removeListener();
+	override onunload() {
+		this.#removeListeners();
 	}
 
 
@@ -27,23 +36,27 @@ export default class LinkOpeningRestore extends Plugin {
 		}
 	}
 
-	#addListener() {
-		const els = document.querySelectorAll(LinkOpeningRestore.#g_SELECTOR);
-		els.forEach(v => {
-			v.removeEventListener('click', this.#clickEventHandler);
-			v.addEventListener('click', this.#clickEventHandler, {
+	#addListeners() {
+		const editors = document.querySelectorAll(LinkOpeningRestore.#g_SELECTOR);
+		for (const i of Array.from(editors)) {
+			if (this.#registeredElements.has(i)) {
+				continue;
+			}
+
+			// console.log('[addListeners] new listener', i);
+			i.addEventListener('click', this.#clickEventHandler, {
 				capture: true
 			});
-		});
-		document.addEventListener('click', this.#clickEventHandler);
+			this.#registeredElements.add(i);
+		}
 	}
 
-	#removeListener() {
-		const els = document.querySelectorAll(LinkOpeningRestore.#g_SELECTOR);
-		els.forEach(editor => {
-			editor.removeEventListener('click', this.#clickEventHandler, {
+	#removeListeners() {
+		this.#registeredElements.forEach(v => {
+			v.removeEventListener('click', this.#clickEventHandler, {
 				capture: true
 			});
+			this.#registeredElements.delete(v);
 		});
 	}
 }

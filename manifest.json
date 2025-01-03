@@ -3,7 +3,7 @@
 	"name": "Link Opening Restore",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Restore the link opening behavior in Obsidian.",
+	"description": "Make links require Ctrl + Left Click to open.",
 	"author": "SmallZombie",
 	"authorUrl": "https://github.com/SmallZombie",
 	"isDesktopOnly": true
