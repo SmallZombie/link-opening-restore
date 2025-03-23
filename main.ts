@@ -1,34 +1,45 @@
-import { Plugin } from 'obsidian';
+import { Plugin, WorkspaceLeaf } from 'obsidian';
 
 
 export default class LinkOpeningRestore extends Plugin {
-	static #g_SELECTOR = '.cm-content';
-
-	#registeredElements = new Set<Element>();
-
+	#registeredLeafs = new Set<WorkspaceLeaf>();
 
 	override onload() {
-		// console.log('debug', this.#registeredElements);
-		this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
-			this.#addListeners();
-
-			// 释放资源
-			this.#registeredElements.forEach(v => {
-				if (!document.contains(v)) {
-					// console.log('[active-leaf-change] no longer active', v);
-					this.#registeredElements.delete(v);
-				}
-			});
-		}));
-		this.#addListeners();
+		this.app.workspace.on('file-open', () => {
+			this.#recheckAllLeafs();
+		});
+		this.#recheckAllLeafs();
 	}
 
 	override onunload() {
-		this.#removeListeners();
+		this.#registeredLeafs.forEach(v => {
+			const editorEl = v.view.containerEl.querySelector('.cm-content')!;
+			this.#removeListenerFromElement(editorEl);
+		});
 	}
 
 
-	#clickEventHandler = (event: MouseEvent) => {
+	#recheckAllLeafs() {
+		this.app.workspace.iterateAllLeaves(leaf => {
+			if (leaf.view.getViewType() === 'markdown' && !this.#registeredLeafs.has(leaf)) {
+				// console.log('debug new leaf', leaf);
+				this.#registeredLeafs.add(leaf);
+				const editorEl = leaf.view.containerEl.querySelector('.cm-content')!;
+				this.#addListenerToElement(editorEl);
+
+				const originalUnload = leaf.view.onunload;
+				leaf.view.onunload = () => {
+					// console.log('debug unload leaf', leaf);
+					this.#registeredLeafs.delete(leaf);
+					this.#removeListenerFromElement(editorEl);
+					originalUnload();
+					leaf.view.onunload = originalUnload;
+				}
+			}
+		});
+	}
+
+	#clickEventHandler(event: MouseEvent) {
 		const target = event.target as HTMLElement;
 		if (target.tagName === 'A' && !event.ctrlKey) {
 			event.preventDefault();
@@ -36,27 +47,15 @@ export default class LinkOpeningRestore extends Plugin {
 		}
 	}
 
-	#addListeners() {
-		const editors = document.querySelectorAll(LinkOpeningRestore.#g_SELECTOR);
-		for (const i of Array.from(editors)) {
-			if (this.#registeredElements.has(i)) {
-				continue;
-			}
-
-			// console.log('[addListeners] new listener', i);
-			i.addEventListener('click', this.#clickEventHandler, {
-				capture: true
-			});
-			this.#registeredElements.add(i);
-		}
+	#addListenerToElement(element: Element) {
+		element.addEventListener('click', this.#clickEventHandler, {
+			capture: true
+		});
 	}
 
-	#removeListeners() {
-		this.#registeredElements.forEach(v => {
-			v.removeEventListener('click', this.#clickEventHandler, {
-				capture: true
-			});
-			this.#registeredElements.delete(v);
+	#removeListenerFromElement(element: Element) {
+		element.removeEventListener('click', this.#clickEventHandler, {
+			capture: true
 		});
 	}
 }
