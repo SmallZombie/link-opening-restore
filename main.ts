@@ -24,7 +24,10 @@ export default class LinkOpeningRestore extends Plugin {
 			if (leaf.view.getViewType() === 'markdown' && !this.#registeredLeafs.has(leaf)) {
 				// console.log('debug new leaf', leaf);
 				this.#registeredLeafs.add(leaf);
-				const editorEl = leaf.view.containerEl.querySelector('.cm-content')!;
+				const editorEl = leaf.view.containerEl.querySelector('.cm-content');
+				// 在某些情况下，这里会是 null。 ——我没能在我的环境中复现这个问题，先这样解决吧
+				if (!editorEl) return;
+
 				this.#addListenerToElement(editorEl);
 
 				const originalUnload = leaf.view.onunload;
