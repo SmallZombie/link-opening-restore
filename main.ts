@@ -22,10 +22,11 @@ export default class LinkOpeningRestore extends Plugin {
 	#recheckAllLeafs() {
 		this.app.workspace.iterateAllLeaves(leaf => {
 			if (leaf.view.getViewType() === 'markdown' && !this.#registeredLeafs.has(leaf)) {
-				// console.log('debug new leaf', leaf);
+				// console.log('[debug] #recheckAllLeafs new leaf', leaf);
 				this.#registeredLeafs.add(leaf);
 				const editorEl = leaf.view.containerEl.querySelector('.cm-content');
-				// 在某些情况下，这里会是 null。 ——我没能在我的环境中复现这个问题，先这样解决吧
+				// In some cases, this will be null.
+				// —— I couldn't reproduce this issue in my environment, Let's leave it at that for now.
 				if (!editorEl) return;
 
 				this.#addListenerToElement(editorEl);
@@ -42,9 +43,32 @@ export default class LinkOpeningRestore extends Plugin {
 		});
 	}
 
-	#clickEventHandler(event: MouseEvent) {
+	#clickEventHandler = (event: MouseEvent) => {
 		const target = event.target as HTMLElement;
-		if (target.tagName === 'A' && !event.ctrlKey) {
+		// console.log('[debug] #clickEventHandler target', target);
+		if (target.tagName !== 'A' &&
+			!target.classList.contains('cm-hmd-internal-link') &&
+			!target.classList.contains('cm-link') &&
+			!target.classList.contains('cm-url')
+		) {
+			return;
+		}
+
+		if (event.shiftKey && event.ctrlKey) {
+			// console.log('[debug] #clickEventHandler open in new window', decodeURIComponent(target.textContent!));
+			// I'm not sure if this is the best practice.
+			this.app.workspace.openPopoutLeaf().openFile(
+				this.app.metadataCache.getFirstLinkpathDest(
+					decodeURIComponent(target.textContent!),
+					''
+				)!
+			);
+			event.preventDefault();
+			event.stopPropagation();
+			return;
+		}
+
+		if (!event.ctrlKey) {
 			event.preventDefault();
 			event.stopPropagation();
 		}
