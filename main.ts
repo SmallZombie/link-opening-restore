@@ -14,7 +14,7 @@ export default class LinkOpeningRestore extends Plugin {
 		const isShiftPressed = event.shiftKey;
 		const isAltPressed = event.altKey;
 
-		console.log('#clickHandler', event.target, isCtrlPressed, isShiftPressed, isAltPressed);
+		// console.log('#clickHandler', event.target, isCtrlPressed, isShiftPressed, isAltPressed);
 
 		const editor = this.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
 		if (!editor) return;
