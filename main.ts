@@ -1,99 +1,60 @@
-import { Plugin, WorkspaceLeaf } from "obsidian";
+import { MarkdownView, Plugin } from 'obsidian';
 
 export default class LinkOpeningRestore extends Plugin {
-	#registeredLeafs = new Set<WorkspaceLeaf>();
-	#isMac = navigator.platform.toUpperCase().includes("MAC"); // Detect macOS platform
-
-	override onload() {
-		this.app.workspace.on("file-open", () => {
-			this.#recheckAllLeafs();
-		});
-		this.#recheckAllLeafs();
+	onload() {
+		document.addEventListener('click', this.#clickHandler, true);
 	}
 
-	override onunload() {
-		this.#registeredLeafs.forEach((v) => {
-			const editorEl = v.view.containerEl.querySelector(".cm-content")!;
-			this.#removeListenerFromElement(editorEl);
-		});
+	onunload() {
+		document.removeEventListener('click', this.#clickHandler, true);
 	}
 
-	#recheckAllLeafs() {
-		this.app.workspace.iterateAllLeaves((leaf) => {
-			if (
-				leaf.view.getViewType() === "markdown" &&
-				!this.#registeredLeafs.has(leaf)
-			) {
-				// console.log('[debug] #recheckAllLeafs new leaf', leaf);
-				this.#registeredLeafs.add(leaf);
-				const editorEl =
-					leaf.view.containerEl.querySelector(".cm-content");
-				// In some cases, this will be null.
-				// —— I couldn't reproduce this issue in my environment, Let's leave it at that for now.
-				if (!editorEl) return;
+	#clickHandler = (event: MouseEvent) => {
+		const isCtrlPressed = event.ctrlKey || event.metaKey;
+		const isShiftPressed = event.shiftKey;
+		const isAltPressed = event.altKey;
 
-				this.#addListenerToElement(editorEl);
+		console.log('#clickHandler', event.target, isCtrlPressed, isShiftPressed, isAltPressed);
 
-				const originalUnload = leaf.view.onunload;
-				leaf.view.onunload = () => {
-					// console.log('debug unload leaf', leaf);
-					this.#registeredLeafs.delete(leaf);
-					this.#removeListenerFromElement(editorEl);
-					originalUnload();
-					leaf.view.onunload = originalUnload;
-				};
-			}
-		});
-	}
+		const editor = this.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+		if (!editor) return;
 
-	#clickEventHandler = (event: MouseEvent) => {
-		const target = event.target as HTMLElement;
-		// console.log('[debug] #clickEventHandler target', target);
+		// Only handle links
 		if (
-			target.tagName !== "A" &&
-			!target.classList.contains("cm-hmd-internal-link") &&
-			!target.classList.contains("cm-link") &&
-			!target.classList.contains("cm-url")
-		) {
-			return;
+			!(event.target as HTMLElement).closest('.cm-link')
+			&& !(event.target as HTMLElement).closest('.cm-url')
+			&& !(event.target as HTMLElement).closest('.cm-hmd-internal-link')
+		) return;
+
+		const token = editor.getClickableTokenAt(
+			editor.posAtCoords(event.clientX, event.clientY)!
+		);
+		if (!token) return;
+
+		event.stopPropagation();
+
+		const linkText = token.text;
+		if (/^https?:\/\/.+/.test(linkText)) {
+			if (isCtrlPressed) window.open(linkText, '_blank');
+		} else {
+			if (isCtrlPressed && isShiftPressed && isAltPressed) {
+				// Open in new window
+				this.app.workspace.setActiveLeaf(this.app.workspace.openPopoutLeaf());
+				this.app.workspace.openLinkText(linkText, '/');
+			} else if (isCtrlPressed && isShiftPressed) {
+				// Open in new tab
+				this.app.workspace.openLinkText(linkText, '/', true);
+			} else if (isCtrlPressed) {
+				// Open in current tab
+				this.app.workspace.openLinkText(linkText, '/');
+			}
 		}
-
-		// Handle macOS (Command key) and other platforms (Ctrl key)
-		const modifierKeyPressed = this.#isMac ? event.metaKey : event.ctrlKey;
-
-		// Shift + Modifier: Open in new window
-		if (event.shiftKey && modifierKeyPressed) {
-			// console.log('[debug] #clickEventHandler open in new window', decodeURIComponent(target.textContent!));
-			// I'm not sure if this is the best practice.
-			this.app.workspace
-				.openPopoutLeaf()
-				.openFile(
-					this.app.metadataCache.getFirstLinkpathDest(
-						decodeURIComponent(target.textContent!),
-						""
-					)!
-				);
-			event.preventDefault();
-			event.stopPropagation();
-			return;
-		}
-
-		// If modifier key not pressed, prevent default link behavior
-		if (!modifierKeyPressed) {
-			event.preventDefault();
-			event.stopPropagation();
-		}
-	};
-
-	#addListenerToElement(element: Element) {
-		element.addEventListener("click", this.#clickEventHandler, {
-			capture: true,
-		});
 	}
+}
 
-	#removeListenerFromElement(element: Element) {
-		element.removeEventListener("click", this.#clickEventHandler, {
-			capture: true,
-		});
+declare module 'obsidian' {
+	interface Editor {
+		posAtCoords(x: number, y: number): EditorPosition | null;
+		getClickableTokenAt(pos: EditorPosition): { text: string } | null;
 	}
 }
