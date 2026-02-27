@@ -1,7 +1,7 @@
 {
 	"id": "link-opening-restore",
 	"name": "Link Opening Restore",
-	"version": "1.3",
+	"version": "1.3.1",
 	"minAppVersion": "1.11.7",
 	"description": "Make links require Ctrl + Left Click to open.",
 	"author": "SmallZombie",

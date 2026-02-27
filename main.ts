@@ -3,10 +3,12 @@ import { MarkdownView, Plugin } from 'obsidian';
 export default class LinkOpeningRestore extends Plugin {
 	onload() {
 		document.addEventListener('click', this.#clickHandler, true);
+		document.addEventListener('mousedown', this.#mousedownHandler, true);
 	}
 
 	onunload() {
 		document.removeEventListener('click', this.#clickHandler, true);
+		document.removeEventListener('mousedown', this.#mousedownHandler, true);
 	}
 
 	#clickHandler = (event: MouseEvent) => {
@@ -20,11 +22,7 @@ export default class LinkOpeningRestore extends Plugin {
 		if (!editor) return;
 
 		// Only handle links
-		if (
-			!(event.target as HTMLElement).closest('.cm-link')
-			&& !(event.target as HTMLElement).closest('.cm-url')
-			&& !(event.target as HTMLElement).closest('.cm-hmd-internal-link')
-		) return;
+		if (!this.#isAnyLink(event.target as HTMLElement)) return;
 
 		const token = editor.getClickableTokenAt(
 			editor.posAtCoords(event.clientX, event.clientY)!
@@ -49,6 +47,17 @@ export default class LinkOpeningRestore extends Plugin {
 				this.app.workspace.openLinkText(linkText, '/');
 			}
 		}
+	}
+
+	#mousedownHandler = (event: MouseEvent) => {
+		if (!this.#isAnyLink(event.target as HTMLElement)) return;
+		// console.log('#mousedownHandler', event);
+
+		(event.target as HTMLElement).draggable = false;
+	}
+
+	#isAnyLink(element: HTMLElement) {
+		return element.closest('.cm-link') || element.closest('.cm-url') || element.closest('.cm-hmd-internal-link');
 	}
 }
 
