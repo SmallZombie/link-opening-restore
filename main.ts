@@ -32,7 +32,7 @@ export default class LinkOpeningRestore extends Plugin {
 		event.stopPropagation();
 
 		const linkText = token.text;
-		if (/^https?:\/\/.+/.test(linkText)) {
+		if (/^[a-zA-Z][a-zA-Z0-9+\-.]*:.+/.test(linkText)) {
 			if (isCtrlPressed) window.open(linkText, '_blank');
 		} else {
 			if (isCtrlPressed && isShiftPressed && isAltPressed) {
